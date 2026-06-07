@@ -1,13 +1,14 @@
 ---
 name: skill-manager
-description: Operate the local Claude Code skill manager (`~/Skills/manage.sh`, exposed as the `skill` command). Use when the user wants to (1) install, uninstall, or list skills on this machine, (2) understand why a skill isn't auto-triggering ("skill not loading"), (3) scaffold a new skill (`skill new <name>`), (4) fix a skill whose directory name doesn't match its frontmatter `name:` field, (5) resolve install conflicts where a real directory exists at the install target, (6) recover a previous version of a skill from the auto-snapshot directory, (7) install a skill into a project rather than per-user (`--project` flag), (8) understand the source-dir vs install-target symlink architecture, (9) edit an existing skill (`skill open <name>`), (10) run a health check (`skill doctor`) and interpret its output, (11) run an LLM-backed quality audit (`skill audit`) using the v2 rubric stored in the prompt library, (12) scan for accidentally committed credentials (`skill scan`, gitleaks under the hood; honors `~/Skills/.gitleaksignore`), (13) capture or refresh bundled OpenAPI snapshots for client-side service skills (`skill snapshot`) or check whether they've drifted from live (`skill drift`), (14) manage the prompt library at `~/Skills/prompts/` (`skill prompt list/show/body/edit/history/new`) — LLM templates that drive the tooling itself (e.g. the audit rubric). Covers the source-of-truth model (source = `~/.skills/`, install target = `~/.claude/skills/`, symlinks bridge the two so live edits propagate), the auto-snapshot safety net (real-dir conflicts get backed up to `~/Skills/.snapshots/<name>-installed-<date>/` before replacement), the command catalog with aliases, the `setup` first-run workflow, doctor categories and which issues are auto-fixable, the rename-to-match-frontmatter fix pattern, per-project vs per-user install, the bundled openapi.json + meta + drift workflow, the gitleaks scan + ignore-by-fingerprint workflow, the audit rubric v2 (calibration anchors, scoring discipline, weighting, evidence requirement, exceptional verdict tier), and the prompt library convention (one .md per template with YAML frontmatter).
+description: Operate the local Claude Code skill manager (the `skill` CLI). Use when the user wants to (1) install, uninstall, or list skills on this machine, (2) understand why a skill isn't auto-triggering ("skill not loading"), (3) scaffold a new skill (`skill new <name>`), (4) fix a skill whose directory name doesn't match its frontmatter `name:` field, (5) resolve install conflicts where a real directory exists at the install target, (6) recover a previous version of a skill from the auto-snapshot directory, (7) install a skill into a project rather than per-user (`--project` flag), (8) understand the source-dir vs install-target symlink architecture, (9) edit an existing skill (`skill open <name>`), (10) run a health check (`skill doctor`) and interpret its output, (11) run an LLM-backed quality audit (`skill audit`) using the v2 rubric stored in the prompt library, (12) scan for accidentally committed credentials (`skill scan`, gitleaks under the hood; honors `~/.skills/.gitleaksignore`), (13) capture or refresh bundled OpenAPI snapshots for client-side service skills (`skill snapshot`) or check whether they've drifted from live (`skill drift`), (14) manage the prompt library at `~/.skills/prompts/` (`skill prompt list/show/body/edit/history/new`) — LLM templates that drive the tooling itself (e.g. the audit rubric). Covers the source-of-truth model (source = `~/.skills/`, install target = `~/.claude/skills/`, symlinks bridge the two so live edits propagate), the auto-snapshot safety net (real-dir conflicts get backed up to `~/.skills/.snapshots/<name>-installed-<date>/` before replacement), the command catalog with aliases, the `setup` first-run workflow, doctor categories and which issues are auto-fixable, the rename-to-match-frontmatter fix pattern, per-project vs per-user install, the bundled openapi.json + meta + drift workflow, the gitleaks scan + ignore-by-fingerprint workflow, the audit rubric v2 (calibration anchors, scoring discipline, weighting, evidence requirement, exceptional verdict tier), and the prompt library convention (one .md per template with YAML frontmatter).
 category: skill-management
 tags: [meta, skill, cli, claude-code]
 ---
 
 # skill-manager
 
-The `skill` CLI (a single Go binary at `~/Skills/skills-go/release/skill`, invoked as `skill` once the shim is on PATH) is a local tool for managing Claude Code skills. This skill documents how it works and how to use it. (The original `~/Skills/manage.sh` bash implementation remains in the tree as a fallback; the command surface, flags, and `--json` shapes are identical.)
+The `skill` CLI (a single static Go binary, invoked as `skill` once it is on PATH) is a local tool for managing Claude Code skills. This skill documents how it works and how to use it.
+
 
 ## The mental model in one paragraph
 
@@ -24,7 +25,7 @@ skill profile <list|show|add|rm>   manage named skill-sets (curated selections =
 skill project <sync|init|show>     copy a repo's selected skills into <repo>/.claude/skills/ (per-project, committable)
 skill suggest                      propose a profile from the usage log (what you actually use)
 skill sync [name|--all]            update local skills from their source: (drift-for-skills; --apply to pull)
-skill add <url|owner/repo>     fetch a skill from github / raw URL / registry into ~/Skills/  (alias: fetch, get)
+skill add <url|owner/repo>     fetch a skill from github / raw URL / registry into ~/.skills/  (alias: fetch, get)
 skill scan [path|--home]       scan a local tree for skill dirs and copy approved ones into the master area (never overwrites; asks per skill; --yes for non-interactive; -n to preview)
 skill remove  [name|--all]     remove symlinks                             (alias: rm, uninstall)
 skill doctor [--fix]           health check; --fix repairs safe issues
@@ -46,6 +47,8 @@ skill categories [cat]                     category inventory, or — with a cat
 skill list --tag T [--category C]          filter the skill list by tag/category (works with --json)
 skill config [init]                        show resolved settings (defaults ← config.json ← env), or write the base config.json
 skill log [-n N]                           view the usage/audit log (in the canonical dir)   (agent: --json)
+skill hooks <install|status|rm> [--harness claude|gemini|all]   wire skill-fire telemetry into harness settings (snapshot-first, merge-not-clobber; codex deliberately unwired — no skill-call seam)
+skill fired <name> [--source S]            log a harness-side skill fire (called BY hooks, not by hand; silent, exit 0; runs matching `on_fire` config rules detached)
 skill update                               check the configured github raw URL for a newer version (knows its own --version)
 skill help                     reference
 ```
@@ -66,7 +69,6 @@ every turn): `skill install --tag/--category/--profile` installs only a subset; 
 named curated selections (a profile == an agent's skill-set == the registry's `/agents/{id}/skills`
 binding); `skill project sync` scopes skills to a repo via `<repo>/.claude/skills.json`; `skill
 suggest` proposes a profile from your usage log; `skill` shows the current per-turn token estimate.
-See `skills-go/docs/SELECTION-AND-SCOPING.md` and ticket `tickets/SELECT-001`.
 
 Universal flags:
 - `--project` — target `<cwd>/.claude/skills/` instead of `~/.claude/skills/` (per-repo, can be committed)
@@ -83,14 +85,16 @@ writes it). View the resolved values + their source with `skill config`. The **c
 defaults to `~/.skills` and is the one bootstrap, overridable via `$SKILLS_HOME`. Keys (config.json /
 env override): `source_dir`/`SKILLS_SOURCE`, `target_dir`, `bin_dir`, `audit_model`/`SKILL_AUDIT_MODEL`,
 `discover_model`/`SKILL_DISCOVER_MODEL`, `parallel`/`SKILL_PARALLEL`, `registry_url`/`REGISTRY_URL`,
-`update_url`/`SKILL_UPDATE_URL`, `editor`/`EDITOR`, `log`/`SKILL_LOG`. The API key is a secret —
+`update_url`/`SKILL_UPDATE_URL`, `editor`/`EDITOR`, `log`/`SKILL_LOG`,
+`fired_weight`/`SKILL_FIRED_WEIGHT` (how many operator touches one harness fire is worth in `skill suggest`; default 3),
+`on_fire` (file-only: `[{"match": "<glob>", "run": "<shell>"}]` — trigger rules run detached per skill fire with
+`$SKILL_NAME`/`$SKILL_SOURCE` in env; a hanging rule never delays the hook). The API key is a secret —
 env-only (`ANTHROPIC_API_KEY`), never stored in config.json.
 
 Logging & safety: every invocation appends one JSON line to `~/.skills/skill.log`
 (ts, version, verb, redacted args, exit, ms) — view with `skill log`, disable with `SKILL_LOG=0`;
 secrets are never logged. `skill scan`/`add` validate imported skill names (reject path-traversal
 like `../`), gate copies behind explicit approval, and never overwrite a same-named skill.
-See `skills-go/docs/SECURITY-AUDIT.md`.
 
 Environment variables:
 - `ANTHROPIC_API_KEY` — required for `skill audit`, `skill discover`, `skill classify` (Anthropic API; uses prompt caching)
@@ -119,7 +123,7 @@ skill setup
 ```
 
 One command. Idempotent. Safe to re-run. It does:
-1. Install every skill in `~/Skills/` (symlinks).
+1. Install every skill in `~/.skills/` (symlinks).
 2. Create `~/bin/skill` shim if missing.
 3. Append `export PATH="$HOME/bin:$PATH"` to `~/.bashrc` (or `~/.zshrc` if present) if PATH doesn't already include `~/bin`.
 4. Run `skill doctor`.
@@ -138,7 +142,7 @@ The scaffold writes a SKILL.md with `name:` already matching the dirname and a `
 
 ### Fixing a dirname / frontmatter mismatch
 
-`skill doctor` flags this when the dirname in `~/Skills/` doesn't match the `name:` field in SKILL.md frontmatter. Fix:
+`skill doctor` flags this when the dirname in `~/.skills/` doesn't match the `name:` field in SKILL.md frontmatter. Fix:
 
 ```bash
 skill rename auth_fastapi_skill ab0t-auth-fastapi
@@ -148,14 +152,14 @@ skill rename auth_fastapi_skill ab0t-auth-fastapi
 
 ### Recovering a previous version after an overwrite
 
-Every replacement is auto-snapshotted to `~/Skills/.snapshots/<name>-installed-<date>/`. To recover:
+Every replacement is auto-snapshotted to `~/.skills/.snapshots/<name>-installed-<date>/`. To recover:
 
 ```bash
-ls ~/Skills/.snapshots/
+ls ~/.skills/.snapshots/
 # diff against current
-diff -r ~/Skills/<name> ~/Skills/.snapshots/<name>-installed-2026-05-08/
+diff -r ~/.skills/<name> ~/.skills/.snapshots/<name>-installed-2026-05-08/
 # restore (manual cp; the manager doesn't auto-restore)
-cp -a ~/Skills/.snapshots/<name>-installed-2026-05-08 ~/Skills/<name>
+cp -a ~/.skills/.snapshots/<name>-installed-2026-05-08 ~/.skills/<name>
 ```
 
 Snapshots are cumulative per-day (re-running install on the same day is a no-op for snapshots, since the dated dir already exists). Old snapshots are not auto-pruned — clean by hand when comfortable.
@@ -165,10 +169,10 @@ Snapshots are cumulative per-day (re-running install on the same day is a no-op 
 ```bash
 cd /path/to/repo
 skill --project install --all
-# creates symlinks in <repo>/.claude/skills/ pointing back to ~/Skills/<name>
+# creates symlinks in <repo>/.claude/skills/ pointing back to ~/.skills/<name>
 ```
 
-This puts the install target inside the repo. **The symlinks won't survive being committed and cloned elsewhere** (they point to a path on this machine). For real per-project skills, copy the source skill INTO the repo and check it in — don't symlink. The `--project` mode is most useful when iterating on a per-repo skill before promoting it to `~/Skills/`.
+This puts the install target inside the repo. **The symlinks won't survive being committed and cloned elsewhere** (they point to a path on this machine). For real per-project skills, copy the source skill INTO the repo and check it in — don't symlink. The `--project` mode is most useful when iterating on a per-repo skill before promoting it to `~/.skills/`.
 
 ### Removing all skills (clean slate)
 
@@ -176,7 +180,7 @@ This puts the install target inside the repo. **The symlinks won't survive being
 skill rm --all     # confirms first; only removes our symlinks, never real dirs
 ```
 
-Refuses to delete anything that isn't a symlink we created (a symlink that points into `~/Skills/`). Real directories or external symlinks are left alone with a warning.
+Refuses to delete anything that isn't a symlink we created (a symlink that points into `~/.skills/`). Real directories or external symlinks are left alone with a warning.
 
 ### Running an LLM-backed quality audit
 
@@ -186,7 +190,7 @@ skill audit billing               # one skill
 SKILL_AUDIT_MODEL=claude-sonnet-4-6 skill audit --all   # sharper scoring, ~5x cost
 ```
 
-Loads the rubric from `~/Skills/prompts/skill-audit-rubric.md`, calls the Anthropic API per skill, scores 6 dimensions (description specificity, trigger coverage, false-positive safety, body completeness, actionability, bug-prevention value), assigns a verdict (`exceptional` ≥ 90, `strong` 75–89, `good` 60–74, `weak` 45–59, `drop` < 45). Per-call cost ~$0.004 with Haiku, ~$0.015 with Sonnet. The rubric uses prompt caching so subsequent calls are cheap.
+Loads the rubric from `~/.skills/prompts/skill-audit-rubric.md`, calls the Anthropic API per skill, scores 6 dimensions (description specificity, trigger coverage, false-positive safety, body completeness, actionability, bug-prevention value), assigns a verdict (`exceptional` ≥ 90, `strong` 75–89, `good` 60–74, `weak` 45–59, `drop` < 45). Per-call cost ~$0.004 with Haiku, ~$0.015 with Sonnet. The rubric uses prompt caching so subsequent calls are cheap.
 
 Output: per-skill verdict + score, sorted ascending (worst first). Issues + first suggested fix print inline for `weak` / `good` / `drop`. Raw JSON saved per-skill in `/tmp/skill-audit-<rand>/<skill>.json` for `jq` drill-in. `audit --all` runs in parallel (default 5 workers; `--parallel N` to tune).
 
@@ -199,7 +203,7 @@ skill secrets --git                      # also scan git history (slower, deeper
 skill secrets --include-snapshots        # scan .snapshots/ too
 ```
 
-Wraps gitleaks. Auto-installs prompt if gitleaks isn't on PATH. Honors `~/Skills/.gitleaksignore` (one fingerprint per line: `<file>:<rule-id>:<line>`). Exits non-zero if findings exist (CI-friendly).
+Wraps gitleaks. Auto-installs prompt if gitleaks isn't on PATH. Honors `~/.skills/.gitleaksignore` (one fingerprint per line: `<file>:<rule-id>:<line>`). Exits non-zero if findings exist (CI-friendly).
 
 ### Managing bundled OpenAPI snapshots
 
@@ -219,7 +223,7 @@ skill drift billing                   # one skill
 
 ### Managing the prompt library (v2 conventions)
 
-LLM templates that drive the tooling live in `~/Skills/prompts/`. Two consumption patterns share the same library:
+LLM templates that drive the tooling live in `~/.skills/prompts/`. Two consumption patterns share the same library:
 
 | `consumed_by:` | Invocation | Examples |
 |---|---|---|
@@ -248,9 +252,9 @@ skill prompt new <name>                        # scaffold v2 frontmatter + body 
 2. **Interface layer**: `schema:` — declares every Jinja2 variable; defaults to `required: false` for graceful degradation
 3. **Contract layer**: `output_format` + `output_schema` + body + `.example.md`
 
-**Read [`prompts/how-to-write-a-prompt-template.md`](../prompts/how-to-write-a-prompt-template.md) before authoring a new prompt.** It's the meta-prompt — defines the conventions, anti-patterns, and validation checklist. `skill prompt new <name>` scaffolds the v2 frontmatter; the meta-prompt fills in the rationale.
+**Read `~/.skills/prompts/how-to-write-a-prompt-template.md` (`skill prompt show how-to-write-a-prompt-template`) before authoring a new prompt.** It's the meta-prompt — defines the conventions, anti-patterns, and validation checklist. `skill prompt new <name>` scaffolds the v2 frontmatter; the meta-prompt fills in the rationale.
 
-**Tools that consume prompts read from this library** — e.g. `skill audit` loads its rubric from `prompts/skill-audit-rubric.md` rather than embedding it in the script. Editing the rubric no longer requires touching `manage.sh`. Bumping a prompt's `version:` field signals a contract-visible change to callers.
+**Tools that consume prompts read from this library** — e.g. `skill audit` loads its rubric from `prompts/skill-audit-rubric.md` rather than embedding it in the script. Editing the rubric never requires touching the CLI source. Bumping a prompt's `version:` field signals a contract-visible change to callers.
 
 **Rendering** uses an in-process Jinja2 subset (`{{ var }}`, `| default(...)`, `{% if %}`, `ChainableUndefined`); it falls back to `python3` + Jinja2 only for templates that use constructs outside that subset (e.g. `{% for %}`). Templates with `template_engine: none` are returned verbatim (skip Jinja2). Missing vars become empty strings — the prompt should still produce a useful (if degraded) output even when called with `{}`.
 
@@ -295,7 +299,7 @@ The manager is built to be safe by default:
 
 1. **Refuses to run as root** — operating on `~/.claude/skills/` as root would create files only root can edit later.
 2. **Ctrl-C trap** — interrupts cleanly without leaving half-states.
-3. **Auto-snapshot before overwrite** — any time a real directory is about to be deleted, it's first copied to `~/Skills/.snapshots/<name>-installed-<date>/`.
+3. **Auto-snapshot before overwrite** — any time a real directory is about to be deleted, it's first copied to `~/.skills/.snapshots/<name>-installed-<date>/`.
 4. **`rm --all` confirms** — bulk-uninstall asks before acting (override with `--force`).
 5. **`rm` only touches our symlinks** — refuses to delete real directories, even with `--force`. To delete a real dir at the target, do it manually.
 6. **`--dry-run` works on every mutating command** — preview before applying.
@@ -305,22 +309,20 @@ The manager is built to be safe by default:
 
 | Path | Role |
 |---|---|
-| `~/Skills/` | source dir; canonical content lives here |
-| `~/Skills/<name>/SKILL.md` | the skill itself; frontmatter `name:` should match `<name>` |
-| `~/Skills/<name>/references/openapi.json` | bundled OpenAPI snapshot for client-side service skills; managed by `skill snapshot` |
-| `~/Skills/<name>/references/openapi.meta.json` | snapshot metadata: `source_url`, `captured_at`, `path_count`, `schema_count` |
-| `~/Skills/<name>/references/openapi.placeholder.md` | placeholder when service was unreachable at skill creation; `skill snapshot` auto-fills when service comes up |
-| `~/Skills/.snapshots/` | auto-backups of overwritten dirs; date-stamped |
-| `~/Skills/skills-go/release/skill` | the CLI (Go binary; what `~/bin/skill` points at) |
-| `~/Skills/manage.sh` | the legacy bash implementation (kept as a fallback) |
-| `~/Skills/prompts/<name>.md` | LLM prompt template (YAML frontmatter + body); managed by `skill prompt` |
-| `~/Skills/prompts/README.md` | prompt library conventions |
-| `~/Skills/tickets/` | deferred work tickets + design docs (e.g. CLI-001, AUDIT-001) |
-| `~/Skills/.gitleaksignore` | suppression file for known-false-positive `skill scan` findings |
+| `~/.skills/` | source dir; canonical content lives here |
+| `~/.skills/<name>/SKILL.md` | the skill itself; frontmatter `name:` should match `<name>` |
+| `~/.skills/<name>/references/openapi.json` | bundled OpenAPI snapshot for client-side service skills; managed by `skill snapshot` |
+| `~/.skills/<name>/references/openapi.meta.json` | snapshot metadata: `source_url`, `captured_at`, `path_count`, `schema_count` |
+| `~/.skills/<name>/references/openapi.placeholder.md` | placeholder when service was unreachable at skill creation; `skill snapshot` auto-fills when service comes up |
+| `~/.skills/.snapshots/` | auto-backups of overwritten dirs; date-stamped |
+| `~/.skills/prompts/<name>.md` | LLM prompt template (YAML frontmatter + body); managed by `skill prompt` |
+| `~/.skills/prompts/README.md` | prompt library conventions |
+| `~/.skills/tickets/` | deferred work tickets (e.g. auto-filed `MISSING-*` proposals from `skill discover`) |
+| `~/.skills/.gitleaksignore` | suppression file for known-false-positive `skill scan` findings |
 | `~/.claude/skills/` | install target Claude Code reads from (default scope) |
 | `<repo>/.claude/skills/` | install target for `--project` scope |
-| `~/bin/skill` | symlink to the Go binary (`skills-go/release/skill`), for the bare `skill` command |
-| `$SKILLS_SOURCE` env var | override the source dir (default `~/Skills/`) |
+| `~/bin/skill` | shim/symlink to the Go binary, for the bare `skill` command |
+| `$SKILLS_SOURCE` env var | override the source dir (default `~/.skills/`) |
 | `$NO_COLOR` env var | disable ANSI colors |
 | `$EDITOR` env var | which editor `skill open` / `skill prompt edit` launches (defaults to `vi`) |
 | `$ANTHROPIC_API_KEY` env var | required for `skill audit` (Anthropic API key) |
@@ -328,18 +330,18 @@ The manager is built to be safe by default:
 
 ## When NOT to use the manager
 
-- **Don't use it on system-wide skills installed by a package manager** — those live elsewhere and shouldn't be symlinked from `~/Skills/`.
+- **Don't use it on system-wide skills installed by a package manager** — those live elsewhere and shouldn't be symlinked from `~/.skills/`.
 - **Don't use `--project` if you intend to commit the result to git** — the symlinks contain absolute paths that won't work for other clones. Copy the source content into the repo instead.
-- **Don't manually edit `~/.claude/skills/<name>/`** — that's the install target, not the source. Edits there get lost on next install. Edit `~/Skills/<name>/` instead and the symlink propagates the change immediately.
+- **Don't manually edit `~/.claude/skills/<name>/`** — that's the install target, not the source. Edits there get lost on next install. Edit `~/.skills/<name>/` instead and the symlink propagates the change immediately.
 
 ## Anti-patterns
 
-- **Editing a skill via the install target.** The target is downstream. Always edit in `~/Skills/<name>/`.
+- **Editing a skill via the install target.** The target is downstream. Always edit in `~/.skills/<name>/`.
 - **Running `skill` with `sudo`.** The script refuses; if the refusal seems wrong, your real problem is permission state on `~/.claude/skills/` — fix that with `chown` instead.
 - **`rm -rf ~/.claude/skills/<name>` directly.** If it was a symlink, fine — but if it was a real dir, you've now lost it without a snapshot. Always go through `skill rm <name>` so the manager can refuse-or-snapshot appropriately.
 - **Renaming a skill dir with `mv` instead of `skill rename`.** `mv` leaves the install symlink dangling. Doctor will flag it next run, but `skill rename` does both steps atomically.
-- **Treating snapshots as durable backup.** They live next to the source on the same disk. For real backup, copy `~/Skills/` to a separate machine or remote.
-- **Embedding new LLM prompts inline in the CLI source.** Add them to `~/Skills/prompts/<name>.md` and load them from there. Prompts deserve their own version history.
-- **Editing the audit rubric in the CLI source.** Edit `~/Skills/prompts/skill-audit-rubric.md` instead. Bump the `version:` field in frontmatter and add a changelog entry.
+- **Treating snapshots as durable backup.** They live next to the source on the same disk. For real backup, copy `~/.skills/` to a separate machine or remote.
+- **Embedding new LLM prompts inline in the CLI source.** Add them to `~/.skills/prompts/<name>.md` and load them from there. Prompts deserve their own version history.
+- **Editing the audit rubric in the CLI source.** Edit `~/.skills/prompts/skill-audit-rubric.md` instead. Bump the `version:` field in frontmatter and add a changelog entry.
 - **Manually editing `references/openapi.json` snapshots.** They're machine-captured. Re-run `skill snapshot <skill>` to refresh from live. Manual edits will get overwritten on next `snapshot` and won't match `drift` checks.
 - **Putting non-fingerprint lines in `.gitleaksignore`.** The format is one fingerprint per line (`<file>:<rule-id>:<line>`), with `#` comments allowed. Random text breaks gitleaks parsing and silently disables the suppression.

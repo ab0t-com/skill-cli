@@ -1,4 +1,14 @@
-# skill — a local-first skills manager for agent harnesses
+<p align="center">
+  <img src="assets/hero.png" alt="skill — Kado the archivist, a cream index-card mascot with brass librarian glasses, filing glowing skill cards into a wall of catalog drawers" width="880">
+</p>
+
+<h1 align="center">skill</h1>
+
+<p align="center"><em>the librarian for what your AI agent knows how to do</em></p>
+
+---
+
+**skill — a local-first skills manager for agent harnesses**
 
 A single static Go binary that manages [Agent Skills](https://agentskills.io)
 (`SKILL.md` folders) on a developer machine: install/curate them for Claude

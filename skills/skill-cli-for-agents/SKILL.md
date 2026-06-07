@@ -55,7 +55,7 @@ skill discover "I'm getting a 402 from /billing/reserve" --json
 Decision branches:
 - `"select"` — load these skills (use `selected_skills`); optionally expand existing ones (`expand_skills`)
 - `"no-skills"` — don't load anything (read `no_skills_reason`)
-- `"missing-skill"` — catalog gap; structured proposal in `missing_skill`. Auto-files a ticket at `~/Skills/tickets/MISSING-<ts>-<slug>.md`. Don't act on it; just surface to the user.
+- `"missing-skill"` — catalog gap; structured proposal in `missing_skill`. Auto-files a ticket at `~/.skills/tickets/MISSING-<ts>-<slug>.md`. Don't act on it; just surface to the user.
 
 **When to call**: at the start of a complex task where the user's domain isn't obvious from their prompt. Don't call for trivial / off-topic / casual prompts — costs an API call.
 
@@ -237,23 +237,12 @@ For scale: pre-filter the manifest by embedding similarity to the user prompt be
 - **Parsing colored output.** Always pass `--json` when you'll parse the result. Color escape codes and progress text break parsers.
 - **Assuming `skill prompt render` validates vars.** It doesn't — extra keys are ignored, missing keys become empty strings (Jinja2 `ChainableUndefined`). Reading `skill prompt show <name>` first is the safest way to know what `vars` to pass.
 
-## Where skill content lives — the 5 storage tiers
-
-When you're producing content (SKILL.md, prompts, docs) instead of consuming, there are FIVE
-distinct places it could end up: local `~/Skills/`, tool registry per-tool content, LLM
-gateway `/guides`, LLM gateway `/v1/templates`, and a forthcoming server-side skill upload.
-Different power levels, different audiences, different mutability.
-
-**See [`references/storage-tiers.md`](references/storage-tiers.md)** for the runtime decision
-tree (where does my content go?), the side-by-side comparison table, per-tier guidance,
-anti-patterns, and the forthcoming-tier note.
 
 ## Where to learn more
 
 - `skill agent` — prints just the agent-runtime help (curated subset of `skill help`)
 - `skill help` — full operator + agent command list with `[agent]` annotations
-- `~/Skills/skill-manager/SKILL.md` — full skill manager docs (operator-facing)
-- `~/Skills/prompts/README.md` — the prompt library v2 conventions
-- `references/storage-tiers.md` — the 5 storage tiers (added 2026-05-09)
+- `skill-manager` (bundled alongside this skill) — full skill manager docs (operator-facing)
+- `~/.skills/prompts/README.md` — the prompt library v2 conventions
 
 The CLI evolves; this skill describes the runtime contract as of 2026-05-09. The `--json` shapes are stable; the human-facing output may change.
