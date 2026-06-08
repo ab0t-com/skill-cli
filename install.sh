@@ -1,19 +1,19 @@
 #!/usr/bin/env sh
 # =============================================================================
-# skill installer (public GitHub release)
+# skills installer (public GitHub release)
 # =============================================================================
 #
-# Downloads the `skill` binary from this GitHub repo's raw content and
+# Downloads the `skills` binary from this GitHub repo's raw content and
 # installs it, verifying the published sha256 before touching anything.
 #
 # What it does:
 #   1. Detects host OS + arch. (Only linux-amd64 is published today; it fails
 #      clearly on anything else rather than installing the wrong thing.)
-#   2. Downloads release/checksums.txt, then release/skill, over HTTPS.
+#   2. Downloads release/checksums.txt, then release/skills, over HTTPS.
 #   3. Verifies the binary against the published sha256 — mandatory.
-#   4. Atomically installs to $PREFIX/bin/skill (default /usr/local/bin),
+#   4. Atomically installs to $PREFIX/bin/skills (default /usr/local/bin),
 #      keeping the prior binary as `.previous`.
-#   5. Confirms with `skill --version` and points you at `skill setup`.
+#   5. Confirms with `skills --version` and points you at `skills setup`.
 #
 # Properties (compliance):
 #   - POSIX sh; runs under /bin/sh on Linux/macOS/busybox.
@@ -33,7 +33,7 @@ set -eu
 REPO_RAW="${SKILL_REPO_RAW:-https://raw.githubusercontent.com/ab0t-com/skill-cli/main}"
 PREFIX="${PREFIX:-/usr/local}"
 BIN_DIR="$PREFIX/bin"
-NAME="skill"
+NAME="skills"
 
 say()  { printf '%s\n' "$*"; }
 die()  { printf 'install.sh: error: %s\n' "$*" >&2; exit 1; }
@@ -50,7 +50,7 @@ command -v curl >/dev/null 2>&1 || die "curl is required"
 command -v sha256sum >/dev/null 2>&1 || die "sha256sum is required"
 
 # --- 2. fetch into a private temp dir ---------------------------------------
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/skill-install.XXXXXX")" || die "mktemp failed"
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/skills-install.XXXXXX")" || die "mktemp failed"
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 say "fetching checksums..."

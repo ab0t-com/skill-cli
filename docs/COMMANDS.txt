@@ -1,43 +1,43 @@
-skill — manage Claude Code skills from ~/.skills
+skills — manage Claude Code skills from ~/.skills
 
 USAGE                                  ([agent] = safe for AI agent runtime use)
-  skill                       list skills + state (like 'docker ps -a')                          [agent]
-  skill setup                 first-time setup: install all + shim + PATH + doctor
-  skill list                  all skills + install state    (alias: ls)                          [agent]
-  skill install [name|--all|--tag T|--category C|--profile P]  symlink selected skills into the install target
-  skill profile <list|show|add|rm>  manage named skill-sets (curated selections = groups for agents)
-  skill project <sync|init|show>    copy a repo's selected skills into <repo>/.claude/skills/ (per-project)
-  skill add <url|owner/repo>  fetch a skill from github / raw URL / registry into the master dir  (alias: fetch, get)
-  skill scan [path|--home]    scan a local tree for skill dirs; copy approved ones in (never overwrites; asks first)
-  skill remove  [name|--all]  remove symlinks               (alias: rm, uninstall)
-  skill doctor [--fix]        health check; --fix repairs safe issues
-  skill rename <dir> <new>    rename a skill dir to match its frontmatter name
-  skill open <name>           open SKILL.md in $EDITOR
-  skill new <name>            scaffold a new skill (uses skill-creator if installed)
-  skill audit [name|--all]    LLM-scored quality audit (Anthropic API, needs $ANTHROPIC_API_KEY)
-  skill secrets [name|--all]  secret-leak scan with gitleaks (current files; --git for history)   (alias: gitleaks, leaks)
-  skill snapshot [name|--all] re-capture bundled openapi.json from each skill's source_url
-  skill drift [name|--all]    check if bundled openapi.json drifted from live (read-only)
-  skill prompt <action>       manage the prompt library (list|show|body|edit|history|new|render)   [agent — render/body/show only]
-  skill manifest              JSON catalog of installed skills (name + description + category + tags)              [agent]
-  skill tree                  grouped tree view by category                                              (alias: by-group)
-  skill tags [tag]            tag inventory, or — with a tag — the skills carrying it    [agent]
-  skill categories [cat]      category inventory, or — with a category — the skills in it
-  skill list --tag T          filter the skill list by tag (also --category C; works with --json)   [agent]
-  skill tag <name> [+t -t | --set t...]  add/remove/replace a skill's tags (a set of strings)
-  skill categorize <name> <category> [tags...]  set category (+ add tags) in frontmatter
-  skill classify <name> [--apply]  LLM-suggest a category + tags (preferring taxonomy.yml); --apply writes it
-  skill similar <name>        top-5 most-similar skills (Jaccard on description tokens + tag overlap)               [agent]
-  skill discover "<prompt>"   LLM router: pick which skill to load for a user prompt; auto-files missing-skill proposals to tickets/   [agent]
-  skill agent                 print just the agent-runtime command set (filtered subset of this help)               [agent]
-  skill sync [name|--all]     update local skills from their source: (drift-for-skills; --apply to pull)
-  skill suggest               propose a profile from the usage log (what you actually use)
-  skill hooks <install|status|rm>  wire the Claude Code telemetry hook (skill fires → usage log)
-  skill fired <name>          log a harness-side skill invocation (called BY hooks, not by hand)   [agent]
-  skill config [init]         show resolved settings (defaults ← config.json ← env), or write the base config.json
-  skill log [-n N]            view the usage/audit log (in the canonical dir)   (SKILL_LOG=0 disables)               [agent]
-  skill update                check github for a newer version (knows its own --version)
-  skill help                  this text
+  skills                      list skills + state (like 'docker ps -a')                          [agent]
+  skills setup                 first-time setup: install all + shim + PATH + doctor
+  skills list                  all skills + install state    (alias: ls)                          [agent]
+  skills install [name|--all|--tag T|--category C|--profile P]  symlink selected skills into the install target
+  skills profile <list|show|add|rm>  manage named skill-sets (curated selections = groups for agents)
+  skills project <sync|init|show>    copy a repo's selected skills into <repo>/.claude/skills/ (per-project)
+  skills add <url|owner/repo>  fetch a skill from github / raw URL / registry into the master dir  (alias: fetch, get)
+  skills scan [path|--home]    scan a local tree for skill dirs; copy approved ones in (never overwrites; asks first)
+  skills remove  [name|--all]  remove symlinks               (alias: rm, uninstall)
+  skills doctor [--fix]        health check; --fix repairs safe issues
+  skills rename <dir> <new>    rename a skill dir to match its frontmatter name
+  skills open <name>           open SKILL.md in $EDITOR
+  skills new <name>            scaffold a new skill (uses skill-creator if installed)
+  skills audit [name|--all]    LLM-scored quality audit (Anthropic API, needs $ANTHROPIC_API_KEY)
+  skills secrets [name|--all]  secret-leak scan with gitleaks (current files; --git for history)   (alias: gitleaks, leaks)
+  skills snapshot [name|--all] re-capture bundled openapi.json from each skill's source_url
+  skills drift [name|--all]    check if bundled openapi.json drifted from live (read-only)
+  skills prompt <action>       manage the prompt library (list|show|body|edit|history|new|render)   [agent — render/body/show only]
+  skills manifest              JSON catalog of installed skills (name + description + category + tags)              [agent]
+  skills tree                  grouped tree view by category                                              (alias: by-group)
+  skills tags [tag]            tag inventory, or — with a tag — the skills carrying it    [agent]
+  skills categories [cat]      category inventory, or — with a category — the skills in it
+  skills list --tag T          filter the skills list by tag (also --category C; works with --json)   [agent]
+  skills tag <name> [+t -t | --set t...]  add/remove/replace a skill's tags (a set of strings)
+  skills categorize <name> <category> [tags...]  set category (+ add tags) in frontmatter
+  skills classify <name> [--apply]  LLM-suggest a category + tags (preferring taxonomy.yml); --apply writes it
+  skills similar <name>        top-5 most-similar skills (Jaccard on description tokens + tag overlap)               [agent]
+  skills discover "<prompt>"   LLM router: pick which skill to load for a user prompt; auto-files missing-skill proposals to tickets/   [agent]
+  skills agent                 print just the agent-runtime command set (filtered subset of this help)               [agent]
+  skills sync [name|--all]     update local skills from their source: (drift-for-skills; --apply to pull)
+  skills suggest               propose a profile from the usage log (what you actually use)
+  skills hooks <install|status|rm>  wire the Claude Code telemetry hook (skill fires → usage log)
+  skills fired <name>          log a harness-side skill invocation (called BY hooks, not by hand)   [agent]
+  skills config [init]         show resolved settings (defaults ← config.json ← env), or write the base config.json
+  skills log [-n N]            view the usage/audit log (in the canonical dir)   (SKILL_LOG=0 disables)               [agent]
+  skills update                check github for a newer version (knows its own --version)
+  skills help                  this text
 
 FLAGS
   --project        target <cwd>/.claude/skills/ instead of ~/.claude/skills/
@@ -53,4 +53,4 @@ NOTES
     ~/.skills/.snapshots/<name>-installed-<date>/
   before being replaced. Nothing is ever deleted without a backup.
 
-  Set PATH=$HOME/bin:$PATH so you can type skill bare. skill setup does this for you.
+  Set PATH=$HOME/bin:$PATH so you can type skills bare. skills setup does this for you.

@@ -1,18 +1,25 @@
 # Changelog
 
-All notable changes to the `skill` CLI are documented here. Versions track the
-published `release/VERSION`; `skill update` compares against it.
+All notable changes to the `skills` CLI are documented here. Versions track the
+published `release/VERSION`; `skills update` compares against it.
 
-## [Unreleased]
+## [0.1.2-public] — 2026-06-08
 
-### Changed (planned — breaking)
-- **The command will be renamed `skill` → `skills`.** `skill(1)` already exists
-  on Linux (the procps signal-sender, sibling of `kill`), so the binary on your
-  PATH will become `skills` to avoid the collision. Every invocation changes
-  (`skills install`, `skills setup`, `skills doctor`, …). After upgrading,
-  remove the old `~/bin/skill` shim. The repository, the `SKILL.md` file format,
-  the `~/.skills/` catalog directory, and all environment variables are
-  unchanged. This will ship as a minor version with a migration note.
+### Changed (breaking)
+- **The command is renamed `skill` → `skills`.** `skill(1)` already exists on
+  Linux (the procps signal-sender, sibling of `kill`), so the binary on your
+  PATH is now `skills`. Every invocation changes (`skills install`,
+  `skills setup`, `skills doctor`, …), and shell completion now completes
+  `skills`.
+- Unchanged: the repository name (`skill-cli`), the `SKILL.md` file format, the
+  `~/.skills/` catalog directory, and all `SKILL_*` environment variables.
+
+### Migration
+- Re-run the installer (or `skills setup`) to lay down the `skills` binary —
+  setup installs the new `~/bin/skills` shim and **automatically removes the
+  legacy `~/bin/skill` shim** it owns.
+- If you wired telemetry, re-run `skills hooks install`; it refreshes the hook
+  to call `skills fired` (replacing the stale `skill fired` command in place).
 
 ## [0.1.1-public] — 2026-06-08
 

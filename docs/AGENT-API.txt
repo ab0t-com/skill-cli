@@ -1,39 +1,39 @@
-skill — runtime API for AI agents
-  (operator commands like install/rename/audit/scan are at `skill help`)
+skills — runtime API for AI agents
+  (operator commands like install/rename/audit/scan are at `skills help`)
 
 DISCOVERY
-  skill discover "<user prompt>" --json
+  skills discover "<user prompt>" --json
     Routes a user prompt to the right skill(s).
     Returns: { decision: "select"|"no-skills"|"missing-skill",
                confidence: "high"|"medium"|"low",
                reasoning_summary, selected_skills, missing_skill, ... }
     Cost: ~$0.01 with Sonnet, ~$0.003 with Haiku. Single API call.
 
-  skill similar <name> --json
+  skills similar <name> --json
     Top-5 most-similar skills (Jaccard on description tokens + tag overlap).
     Returns: { target, target_category, target_tags, results: [{name, score,
                category, tags, shared_tags, description_jaccard, tag_jaccard}] }
     Read-only, no API call. Use after loading one skill to find related context.
 
 CATALOG
-  skill manifest
+  skills manifest
     Full catalog. Always JSON.
     Returns: [{name, description, category, tags}, ...]
 
-  skill list --json
+  skills list --json
     Same as manifest but with install_state per skill.
     Returns: [{name, description, category, tags, install_state}, ...]
 
 PROMPT TEMPLATES
-  skill prompt render <name> [--vars '<json>']
+  skills prompt render <name> [--vars '<json>']
     Hydrate a Jinja2 template. Returns rendered text on stdout.
     Missing vars degrade gracefully (Jinja2 ChainableUndefined → empty string).
 
-  skill prompt body <name>
+  skills prompt body <name>
     Raw pre-render template body. Useful for inspecting Jinja2 syntax + the
     schema declared in frontmatter before deciding what vars to pass.
 
-  skill prompt show <name>
+  skills prompt show <name>
     Full file (frontmatter + body) for inspection.
 
 CONVENTIONS
@@ -41,15 +41,15 @@ CONVENTIONS
   • All accept --json for stable structured output.
   • Errors emit { "error": "...", ... } to stderr; exit code non-zero.
   • Non-zero exits indicate failure; check exit code AND parse stdout JSON.
-  • `skill manifest` is cheap; cache once per session/conversation.
+  • `skills manifest` is cheap; cache once per session/conversation.
 
 AGENT CALL CHAIN EXAMPLE
   # 1. Route the user prompt
-  decision=$(skill discover "$USER_PROMPT" --json)
+  decision=$(skills discover "$USER_PROMPT" --json)
   # 2. Find sibling skills if needed
-  similar=$(skill similar $(echo "$decision" | jq -r '.selected_skills[0].name') --json)
+  similar=$(skills similar $(echo "$decision" | jq -r '.selected_skills[0].name') --json)
   # 3. Hydrate a templated prompt for an agent-dispatched sub-task
-  prompt=$(skill prompt render create-service-api-reference-skill --vars '{"service_name":"foo"}')
+  prompt=$(skills prompt render create-service-api-reference-skill --vars '{"service_name":"foo"}')
 
 NOT FOR AGENT USE (have side effects, prompts, or irreversible state changes)
   install, add, remove, scan, secrets, snapshot, drift, audit, rename, doctor,
@@ -58,4 +58,4 @@ NOT FOR AGENT USE (have side effects, prompts, or irreversible state changes)
 
 MORE
   • Read `skill-cli-for-agents` SKILL.md for usage patterns + decision rules
-  • `skill help` shows the full command set including operator commands
+  • `skills help` shows the full command set including operator commands

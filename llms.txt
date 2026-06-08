@@ -1,4 +1,4 @@
-# skill — agent bootstrap (llms.txt)
+# skills — agent bootstrap (llms.txt)
 
 > A single static Go binary that manages Agent Skills (SKILL.md folders) on a
 > developer machine: catalog, selective install, profiles, per-repo scoping,
@@ -9,7 +9,7 @@
 
 ## What this is
 
-`skill` treats skills the way a package manager treats packages. Source of
+`skills` treats skills the way a package manager treats packages. Source of
 truth is a catalog dir (`~/.skills/`); installs are symlinks into the harness
 dir (`~/.claude/skills/`) so edits propagate live; selection (tags,
 categories, named profiles) replaces install-everything; per-repo scoping
@@ -18,7 +18,7 @@ copies real committable files into `<repo>/.claude/skills/`.
 ## Install (verify, then trust)
 
     curl -fsSL https://raw.githubusercontent.com/ab0t-com/skill-cli/main/install.sh | sh
-    skill setup
+    skills setup
 
 The installer is POSIX sh, HTTPS-only, and refuses to install without a
 sha256 match against release/checksums.txt. Binary: linux-amd64.
@@ -27,28 +27,28 @@ sha256 match against release/checksums.txt. Binary: linux-amd64.
 
 1. skills/skill-cli-for-agents/SKILL.md — usage patterns + decision rules
    for agent runtime use. Read this FIRST.
-2. docs/AGENT-API.txt — the runtime-safe command subset (`skill agent`):
+2. docs/AGENT-API.txt — the runtime-safe command subset (`skills agent`):
    discover/similar/manifest/list/log/prompt-render, all with --json.
 3. skills/skill-manager/SKILL.md — the full operator manual (install,
    doctor, snapshots, audit, secrets, prompt library) when you need to act
    as the curator, not just the consumer.
-4. docs/COMMANDS.txt — complete verb reference (`skill help`).
+4. docs/COMMANDS.txt — complete verb reference (`skills help`).
 
 ## Agent runtime rules (the contract)
 
 - Read-only verbs are safe: `manifest`, `list --json`, `similar --json`,
   `discover --json`, `log --json`, `prompt render/body/show`.
-- `skill manifest` is cheap — cache it once per session.
+- `skills manifest` is cheap — cache it once per session.
 - Do NOT loop mutating verbs (install/remove/scan/add/rename/audit/...) —
   those are curator commands; ask the human.
 - Errors: non-zero exit + `{"error": ...}` on stderr. Check both.
-- `skill fired <name>` exists for harness hooks, not for you to call by hand.
+- `skills fired <name>` exists for harness hooks, not for you to call by hand.
 
 ## Typical agent call chain
 
-    decision=$(skill discover "$USER_PROMPT" --json)        # route
-    skill similar "$(echo "$decision" | jq -r '.selected_skills[0].name')" --json
-    skill prompt render <template> --vars '{"k":"v"}'        # hydrate a template
+    decision=$(skills discover "$USER_PROMPT" --json)        # route
+    skills similar "$(echo "$decision" | jq -r '.selected_skills[0].name')" --json
+    skills prompt render <template> --vars '{"k":"v"}'        # hydrate a template
 
 ## Repo map
 
