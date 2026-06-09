@@ -43,16 +43,22 @@ NAME="skills"
 say()  { printf '%s\n' "$*"; }
 die()  { printf 'install.sh: error: %s\n' "$*" >&2; exit 1; }
 
-# --- 1. platform gate --------------------------------------------------------
+# --- 1. detect platform → pick the published artifact ------------------------
 os="$(uname -s 2>/dev/null || echo unknown)"
 arch="$(uname -m 2>/dev/null || echo unknown)"
 case "$os/$arch" in
-  Linux/x86_64) ;;
-  *) die "only linux-amd64 binaries are published today (got $os/$arch). Build from source instead." ;;
+  Linux/x86_64)               ART="skills-linux-amd64"  ;;
+  Linux/aarch64|Linux/arm64)  ART="skills-linux-arm64"  ;;
+  Darwin/x86_64)              ART="skills-darwin-amd64" ;;
+  Darwin/arm64)               ART="skills-darwin-arm64" ;;
+  *) die "no prebuilt binary for $os/$arch (supported: Linux & macOS on amd64/arm64; on Windows use install.ps1). Build from source: github.com/ab0t-com/skill-cli" ;;
 esac
 
 command -v curl >/dev/null 2>&1 || die "curl is required"
-command -v sha256sum >/dev/null 2>&1 || die "sha256sum is required"
+# sha256 tool differs by OS: coreutils (Linux) = sha256sum; macOS ships shasum.
+if   command -v sha256sum >/dev/null 2>&1; then SHACHECK="sha256sum -c -"
+elif command -v shasum    >/dev/null 2>&1; then SHACHECK="shasum -a 256 -c -"
+else die "need 'sha256sum' or 'shasum' to verify the download"; fi
 
 # --- 2. fetch into a private temp dir ---------------------------------------
 tmp="$(mktemp -d "${TMPDIR:-/tmp}/skills-install.XXXXXX")" || die "mktemp failed"
@@ -62,17 +68,17 @@ say "fetching checksums..."
 curl -fsSL "$REPO_RAW/release/checksums.txt" -o "$tmp/checksums.txt" \
   || die "could not download checksums.txt — refusing to install unverified"
 
-say "fetching $NAME binary..."
-curl -fsSL "$REPO_RAW/release/$NAME" -o "$tmp/$NAME" \
-  || die "could not download the binary"
+say "fetching $ART ($os/$arch)..."
+curl -fsSL "$REPO_RAW/release/$ART" -o "$tmp/$ART" \
+  || die "could not download $ART"
 
 # --- 3. mandatory sha256 verification ----------------------------------------
-( cd "$tmp" && grep " $NAME\$" checksums.txt | sha256sum -c - >/dev/null 2>&1 ) \
-  || die "sha256 MISMATCH — the downloaded binary does not match the published checksum. Aborting."
+( cd "$tmp" && grep " $ART\$" checksums.txt | $SHACHECK >/dev/null 2>&1 ) \
+  || die "sha256 MISMATCH — $ART does not match the published checksum. Aborting."
 say "sha256 verified."
 
-# --- 4. atomic install --------------------------------------------------------
-chmod 0755 "$tmp/$NAME"
+# --- 4. atomic install (installs the verified artifact as `skills`) ----------
+chmod 0755 "$tmp/$ART"
 mkdir -p "$BIN_DIR" 2>/dev/null || true
 if [ ! -w "$BIN_DIR" ]; then
   if [ "$PREFIX_SET" -eq 1 ]; then
@@ -89,7 +95,7 @@ if [ -e "$BIN_DIR/$NAME" ]; then
   mv "$BIN_DIR/$NAME" "$BIN_DIR/$NAME.previous"
   say "kept prior binary as $NAME.previous"
 fi
-mv "$tmp/$NAME" "$BIN_DIR/$NAME"
+mv "$tmp/$ART" "$BIN_DIR/$NAME"
 
 # --- 5. confirm + make it usable with zero fiddling --------------------------
 ver="$("$BIN_DIR/$NAME" --version 2>/dev/null || echo "$NAME")"
