@@ -11,7 +11,8 @@
 #      clearly on anything else rather than installing the wrong thing.)
 #   2. Downloads release/checksums.txt, then release/skills, over HTTPS.
 #   3. Verifies the binary against the published sha256 — mandatory.
-#   4. Atomically installs to $PREFIX/bin/skills (default /usr/local/bin),
+#   4. Atomically installs to $PREFIX/bin/skills (default /usr/local/bin, or
+#      ~/.local/bin automatically when /usr/local needs root you don't have),
 #      keeping the prior binary as `.previous`.
 #   5. Confirms with `skills --version` and points you at `skills setup`.
 #
@@ -31,6 +32,10 @@
 set -eu
 
 REPO_RAW="${SKILL_REPO_RAW:-https://raw.githubusercontent.com/ab0t-com/skill-cli/main}"
+# If the user set PREFIX, honor it exactly. Otherwise default to /usr/local but
+# fall back to a user-local dir when that needs root we don't have — so a plain
+# non-root `curl | sh` just works without sudo.
+PREFIX_SET=0; [ -n "${PREFIX:-}" ] && PREFIX_SET=1
 PREFIX="${PREFIX:-/usr/local}"
 BIN_DIR="$PREFIX/bin"
 NAME="skills"
@@ -69,7 +74,16 @@ say "sha256 verified."
 # --- 4. atomic install --------------------------------------------------------
 chmod 0755 "$tmp/$NAME"
 mkdir -p "$BIN_DIR" 2>/dev/null || true
-[ -w "$BIN_DIR" ] || die "$BIN_DIR is not writable (re-run with sudo, or PREFIX=\$HOME/.local)"
+if [ ! -w "$BIN_DIR" ]; then
+  if [ "$PREFIX_SET" -eq 1 ]; then
+    die "$BIN_DIR is not writable (re-run with sudo, or set PREFIX to a writable dir)"
+  fi
+  # Default /usr/local needs root we don't have → install to a user dir, no sudo.
+  BIN_DIR="${XDG_BIN_HOME:-$HOME/.local/bin}"
+  say "/usr/local/bin needs root; installing to $BIN_DIR instead (no sudo)."
+  mkdir -p "$BIN_DIR" 2>/dev/null || die "could not create $BIN_DIR"
+  [ -w "$BIN_DIR" ] || die "$BIN_DIR is not writable — set PREFIX=<dir> to choose another location"
+fi
 
 if [ -e "$BIN_DIR/$NAME" ]; then
   mv "$BIN_DIR/$NAME" "$BIN_DIR/$NAME.previous"
@@ -77,10 +91,34 @@ if [ -e "$BIN_DIR/$NAME" ]; then
 fi
 mv "$tmp/$NAME" "$BIN_DIR/$NAME"
 
-# --- 5. confirm ----------------------------------------------------------------
-say "installed: $("$BIN_DIR/$NAME" --version)"
+# --- 5. confirm + make it usable with zero fiddling --------------------------
+ver="$("$BIN_DIR/$NAME" --version 2>/dev/null || echo "$NAME")"
 say ""
-say "next steps:"
-say "  $NAME setup        # first-run: seeds a starter skill set + shim + PATH + doctor"
-say "  $NAME help         # full command reference"
-say "  see llms.txt in this repo if you are an AI agent bootstrapping yourself"
+say "✓ installed $ver → $BIN_DIR"
+
+# Persist PATH so future shells just work (idempotent; only the rc files that
+# exist, falling back to ~/.profile). Then print ONE copy-paste line that works
+# in the current shell too.
+on_path=0
+case ":$PATH:" in *":$BIN_DIR:"*) on_path=1 ;; esac
+if [ "$on_path" -eq 0 ]; then
+  line="export PATH=\"$BIN_DIR:\$PATH\""
+  added=0
+  for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    [ -e "$rc" ] || continue
+    grep -qF "$line" "$rc" 2>/dev/null || printf '\n# added by skills installer\n%s\n' "$line" >> "$rc"
+    added=1
+  done
+  [ "$added" -eq 0 ] && { grep -qF "$line" "$HOME/.profile" 2>/dev/null || printf '# added by skills installer\n%s\n' "$line" >> "$HOME/.profile"; }
+fi
+
+say ""
+say "Run this to finish (copy-paste):"
+say ""
+if [ "$on_path" -eq 0 ]; then
+  say "    export PATH=\"$BIN_DIR:\$PATH\" && $NAME setup"
+else
+  say "    $NAME setup"
+fi
+say ""
+say "New terminals already have it. \`$NAME help\` for everything."
