@@ -1,6 +1,6 @@
 ---
 name: skill-manager
-description: Operate the local Claude Code skill manager (the `skills` CLI). Use when the user wants to (1) install, uninstall, or list skills on this machine, (2) understand why a skill isn't auto-triggering ("skill not loading"), (3) scaffold a new skill (`skills new <name>`), (4) fix a skill whose directory name doesn't match its frontmatter `name:` field, (5) resolve install conflicts where a real directory exists at the install target, (6) recover a previous version of a skill from the auto-snapshot directory, (7) install a skill into a project rather than per-user (`--project` flag), (8) understand the source-dir vs install-target symlink architecture, (9) edit an existing skill (`skills open <name>`), (10) run a health check (`skills doctor`) and interpret its output, (11) run an LLM-backed quality audit (`skills audit`) using the v2 rubric stored in the prompt library, (12) scan for accidentally committed credentials (`skills scan`, gitleaks under the hood; honors `~/.skills/.gitleaksignore`), (13) capture or refresh bundled OpenAPI snapshots for client-side service skills (`skills snapshot`) or check whether they've drifted from live (`skills drift`), (14) manage the prompt library at `~/.skills/prompts/` (`skills prompt list/show/body/edit/history/new`) — LLM templates that drive the tooling itself (e.g. the audit rubric). Covers the source-of-truth model (source = `~/.skills/`, install target = `~/.claude/skills/`, symlinks bridge the two so live edits propagate), the auto-snapshot safety net (real-dir conflicts get backed up to `~/.skills/.snapshots/<name>-installed-<date>/` before replacement), the command catalog with aliases, the `setup` first-run workflow, doctor categories and which issues are auto-fixable, the rename-to-match-frontmatter fix pattern, per-project vs per-user install, the bundled openapi.json + meta + drift workflow, the gitleaks scan + ignore-by-fingerprint workflow, the audit rubric v2 (calibration anchors, scoring discipline, weighting, evidence requirement, exceptional verdict tier), and the prompt library convention (one .md per template with YAML frontmatter).
+description: Operate the local Claude Code skill manager (the `skills` CLI). Use when the user wants to (1) install, uninstall, or list skills on this machine, (2) understand why a skill isn't auto-triggering ("skill not loading"), (3) scaffold a new skill (`skills new <name>`), (4) fix a skill whose directory name doesn't match its frontmatter `name:` field, (5) resolve install conflicts where a real directory exists at the install target, (6) recover a previous version of a skill from the auto-snapshot directory, (7) install a skill into a project rather than per-user (`--project` flag), (8) understand the source-dir vs install-target symlink architecture, (9) edit an existing skill (`skills open <name>`), (10) run a health check (`skills doctor`) and interpret its output, (11) run an LLM-backed quality + safety audit (`skills audit`) using the v3 rubric (10 dimensions incl. operational_safety) — deep by default (scans bundled scripts/ + gitleaks, `--basic` to skip; caches every LLM call durably under `~/.skills/.state/llm-calls/`), (12) scan for accidentally committed credentials (`skills scan`, gitleaks under the hood; honors `~/.skills/.gitleaksignore`), (13) capture or refresh bundled OpenAPI snapshots for client-side service skills (`skills snapshot`) or check whether they've drifted from live (`skills drift`), (14) manage the prompt library at `~/.skills/prompts/` (`skills prompt list/show/body/edit/history/new`) — LLM templates that drive the tooling itself (e.g. the audit rubric). Covers the source-of-truth model (source = `~/.skills/`, install target = `~/.claude/skills/`, symlinks bridge the two so live edits propagate), the auto-snapshot safety net (real-dir conflicts get backed up to `~/.skills/.state/snapshots/<name>-installed-<date>/` before replacement), the command catalog with aliases, the `setup` first-run workflow, doctor categories and which issues are auto-fixable, the rename-to-match-frontmatter fix pattern, per-project vs per-user install, the bundled openapi.json + meta + drift workflow, the gitleaks scan + ignore-by-fingerprint workflow, the audit rubric v3 (10 calibrated dimensions incl. operational_safety/conciseness/instructional_quality/maintainability, scoring discipline, weighting /140, evidence requirement, deep-vs-basic payload, static risk scan + gitleaks), and the prompt library convention (one .md per template with YAML frontmatter).
 category: skill-management
 tags: [meta, skill, cli, claude-code]
 ---
@@ -12,7 +12,7 @@ The `skills` CLI (a single static Go binary, invoked as `skills` once it is on P
 
 ## The mental model in one paragraph
 
-Two directories: **`~/.skills/`** (source — where you author and edit) and **`~/.claude/skills/`** (target — where Claude Code reads from). The manager creates **symlinks** from target → source, so editing a skill in `~/.skills/foo/SKILL.md` is immediately visible to Claude Code with no re-install. The source-of-truth is always `~/.skills/`. Anything mutating the target (install, remove, replace) is auto-snapshotted to `~/.skills/.snapshots/` first if there's something to lose.
+Two directories: **`~/.skills/`** (source — where you author and edit) and **`~/.claude/skills/`** (target — where Claude Code reads from). The manager creates **symlinks** from target → source, so editing a skill in `~/.skills/foo/SKILL.md` is immediately visible to Claude Code with no re-install. The source-of-truth is always `~/.skills/`. Anything mutating the target (install, remove, replace) is auto-snapshotted to `~/.skills/.state/snapshots/` first if there's something to lose.
 
 ## Command reference
 
@@ -152,14 +152,14 @@ skills rename auth_fastapi_skill ab0t-auth-fastapi
 
 ### Recovering a previous version after an overwrite
 
-Every replacement is auto-snapshotted to `~/.skills/.snapshots/<name>-installed-<date>/`. To recover:
+Every replacement is auto-snapshotted to `~/.skills/.state/snapshots/<name>-installed-<date>/`. To recover:
 
 ```bash
-ls ~/.skills/.snapshots/
+ls ~/.skills/.state/snapshots/
 # diff against current
-diff -r ~/.skills/<name> ~/.skills/.snapshots/<name>-installed-2026-05-08/
+diff -r ~/.skills/<name> ~/.skills/.state/snapshots/<name>-installed-2026-05-08/
 # restore (manual cp; the manager doesn't auto-restore)
-cp -a ~/.skills/.snapshots/<name>-installed-2026-05-08 ~/.skills/<name>
+cp -a ~/.skills/.state/snapshots/<name>-installed-2026-05-08 ~/.skills/<name>
 ```
 
 Snapshots are cumulative per-day (re-running install on the same day is a no-op for snapshots, since the dated dir already exists). Old snapshots are not auto-pruned — clean by hand when comfortable.
@@ -197,10 +197,10 @@ Output: per-skill verdict + score, sorted ascending (worst first). Issues + firs
 ### Scanning for accidentally leaked credentials
 
 ```bash
-skills secrets                            # all skills, current files, skip .snapshots/
+skills secrets                            # all skills, current files, skip .state/snapshots/
 skills secrets billing                    # one skill
 skills secrets --git                      # also scan git history (slower, deeper)
-skills secrets --include-snapshots        # scan .snapshots/ too
+skills secrets --include-snapshots        # scan .state/snapshots/ too
 ```
 
 Wraps gitleaks. Auto-installs prompt if gitleaks isn't on PATH. Honors `~/.skills/.gitleaksignore` (one fingerprint per line: `<file>:<rule-id>:<line>`). Exits non-zero if findings exist (CI-friendly).
@@ -299,7 +299,7 @@ The manager is built to be safe by default:
 
 1. **Refuses to run as root** — operating on `~/.claude/skills/` as root would create files only root can edit later.
 2. **Ctrl-C trap** — interrupts cleanly without leaving half-states.
-3. **Auto-snapshot before overwrite** — any time a real directory is about to be deleted, it's first copied to `~/.skills/.snapshots/<name>-installed-<date>/`.
+3. **Auto-snapshot before overwrite** — any time a real directory is about to be deleted, it's first copied to `~/.skills/.state/snapshots/<name>-installed-<date>/`.
 4. **`rm --all` confirms** — bulk-uninstall asks before acting (override with `--force`).
 5. **`rm` only touches our symlinks** — refuses to delete real directories, even with `--force`. To delete a real dir at the target, do it manually.
 6. **`--dry-run` works on every mutating command** — preview before applying.
@@ -314,7 +314,7 @@ The manager is built to be safe by default:
 | `~/.skills/<name>/references/openapi.json` | bundled OpenAPI snapshot for client-side service skills; managed by `skills snapshot` |
 | `~/.skills/<name>/references/openapi.meta.json` | snapshot metadata: `source_url`, `captured_at`, `path_count`, `schema_count` |
 | `~/.skills/<name>/references/openapi.placeholder.md` | placeholder when service was unreachable at skill creation; `skills snapshot` auto-fills when service comes up |
-| `~/.skills/.snapshots/` | auto-backups of overwritten dirs; date-stamped |
+| `~/.skills/.state/snapshots/` | auto-backups of overwritten dirs; date-stamped |
 | `~/.skills/prompts/<name>.md` | LLM prompt template (YAML frontmatter + body); managed by `skills prompt` |
 | `~/.skills/prompts/README.md` | prompt library conventions |
 | `~/.skills/tickets/` | deferred work tickets (e.g. auto-filed `MISSING-*` proposals from `skills discover`) |

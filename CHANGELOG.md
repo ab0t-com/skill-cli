@@ -3,6 +3,40 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
+## [0.1.9-public] — 2026-06-09
+
+### Added
+- **`skills audit` is now a quality + safety audit (rubric v3, 10 dimensions).**
+  New dimensions: `operational_safety` (×2.0 — known-vs-hidden risk),
+  `conciseness`, `instructional_quality`, `maintainability`. Single-skill audits
+  print the per-dimension breakdown.
+- **Deep audit by default.** The audit now reads a skill's bundled `scripts/` and
+  runs a static risk scan (dangerous-shell-pattern grep + gitleaks when installed)
+  and feeds them to the model, so `operational_safety` judges real risk, not just
+  the prose. Risk findings print per skill. `--basic` reverts to SKILL.md-only.
+- **Durable LLM-call journal + cache.** Every audit call is hashed and saved under
+  `~/.skills/.state/llm-calls/` (cache → unchanged skills don't re-bill; `--no-cache`
+  to force; `SKILL_LLM_LOG=0` to disable). `skills config` shows the new `state dir`.
+
+### Changed
+- **Machine-local state moved under `~/.skills/.state/`** (snapshots, usage log,
+  the LLM journal) so the catalog dir lists skills, not data. **Existing installs
+  migrate automatically and silently on first run** — `~/.skills/.snapshots` →
+  `~/.skills/.state/snapshots` and `~/.skills/skill.log` → `~/.skills/.state/skill.log`
+  (one-time, idempotent, symlink-safe; nothing is deleted). `$SKILLS_STATE_DIR`
+  overrides the location.
+- Audit output format changed (per-dimension lines, risk findings, a journal-path
+  footer). `audit` has no `--json` mode, so this affects only screen-scrapers.
+
+### Notes
+- Deep audits cost more than the old SKILL.md-only pass (they send scripts; the
+  rubric recommends `claude-sonnet-4-6`). Caching offsets repeats; use `--basic`
+  for a cheap shallow pass. The model is still configurable via `SKILL_AUDIT_MODEL`
+  (default `claude-haiku-4-5`).
+- Clients with a hand-authored pre-v3 `prompts/skill-audit-rubric.md` get a one-line
+  skew warning and 6-dimension scoring until they refresh it; everyone else uses the
+  binary's built-in v3 rubric.
+
 ## [0.1.2-public] — 2026-06-08
 
 ### Changed (breaking)

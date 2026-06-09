@@ -50,7 +50,7 @@ FLAGS
 
 NOTES
   Conflicts (real dir at install target) are auto-snapshotted to
-    ~/.skills/.snapshots/<name>-installed-<date>/
+    ~/.skills/.state/snapshots/<name>-installed-<date>/
   before being replaced. Nothing is ever deleted without a backup.
 
   Set PATH=$HOME/bin:$PATH so you can type skills bare. skills setup does this for you.

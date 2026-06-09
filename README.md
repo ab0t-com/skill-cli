@@ -39,18 +39,35 @@ package manager treats packages:
 - **quality + safety gates** (`skills audit` LLM scoring, `skills secrets`
   gitleaks scan, `skills doctor` health checks).
 
+## Where skills come from
+
+A fresh install starts with an **empty catalog** — `skills` is the manager, not a
+bundle of content. The catalog at `~/.skills/` is filled three ways:
+
+- **seed** — `skills setup` self-seeds a small **starter set** from this repo on an
+  empty catalog (needs git + network), so you begin with something useful;
+- **fetch** — `skills add <owner/repo[/path]>` pulls any skill from GitHub or a raw
+  URL, e.g. `skills add ab0t-com/skill-cli/skills/skill-creator`;
+- **author** — `skills new <name>` scaffolds your own; it hot-propagates via symlink.
+
+Seeding and fetching are strictly additive: an existing skill dir is **never**
+overwritten or deleted.
+
 ## Quickstart
 
 ```bash
+skills setup                 # seeds the starter set, shim, PATH, doctor
 skills                       # status table — what's installed, what it costs
-skills install --tag billing # selective install
-skills profile add mine --tags billing,testing
-skills install --profile mine
-skills new my-skill          # scaffold; edit; it hot-propagates via symlink
+skills add ab0t-com/skill-cli/skills/skill-creator   # fetch more, any time
+skills profile add mine --tags meta,authoring        # group a curated set
+skills new my-skill          # scaffold your own; edit; it hot-propagates
 skills audit my-skill        # LLM quality score (needs ANTHROPIC_API_KEY)
 skills hooks install         # skill-fire telemetry (Claude Code)
 skills suggest               # propose a profile from observed usage
 ```
+
+> LLM-backed verbs (`audit`, `discover`, `classify`) need `ANTHROPIC_API_KEY`;
+> everything else is local and free.
 
 Per-repo:
 
