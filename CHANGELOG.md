@@ -3,7 +3,7 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
-## [0.1.13-public] — 2026-06-09
+## [0.1.14-public] — 2026-06-09
 
 ### Added
 - **macOS, Linux-arm64, and Windows binaries.** `release.sh` now cross-compiles a
@@ -13,6 +13,13 @@ published `release/VERSION`; `skills update` compares against it.
   with `sha256sum` or macOS `shasum`) and still falls back to `~/.local/bin` + wires
   PATH for you. **Windows** has its own one-liner: `irm
   https://raw.githubusercontent.com/ab0t-com/skill-cli/main/install.ps1 | iex`.
+
+### Fixed (Windows correctness, from a portability audit)
+- Enable virtual-terminal processing on Windows so colored output renders instead of
+  printing raw escape codes on legacy consoles (best-effort; modern terminals
+  unaffected).
+- Use the real home dir (not `$HOME`, which is unset on Windows) for the cwd hint;
+  skip the Unix-only `tput` width probe on Windows.
 
 ### Notes
 - On Windows, skill linking (`skills setup`) uses symlinks — enable Developer Mode
