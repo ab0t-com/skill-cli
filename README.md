@@ -121,3 +121,19 @@ to disable) · secrets never logged.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+## Privacy & telemetry
+
+- **No phone-home telemetry to ab0t or any third-party analytics service** — there is
+  none in the binary, the install scripts, or the bundled skill content.
+- **No opt-in/opt-out telemetry toggle**, because there is no external telemetry to toggle.
+
+For full transparency, the only times `skills` makes a network request are:
+
+- `skills update` — a version check against this repo's `release/VERSION` on GitHub.
+- `skills audit` / `discover` / `classify` — call the Anthropic API using **your own**
+  `ANTHROPIC_API_KEY` (your prompts go to Anthropic under your key, not to ab0t).
+- `skills add <url>` — downloads the skill you explicitly asked for.
+
+Usage logging is **local only** (`~/.skills/.state/skill.log`; `SKILL_LOG=0` to disable)
+and never leaves your machine; secret scans run locally and secrets are never logged.

@@ -27,9 +27,11 @@ $ProgressPreference = 'SilentlyContinue'
 $RepoRaw = if ($env:SKILL_REPO_RAW) { $env:SKILL_REPO_RAW } else { 'https://raw.githubusercontent.com/ab0t-com/skill-cli/main' }
 
 # --- 1. platform -> artifact -------------------------------------------------
+# ARM64 Windows runs the amd64 build under emulation, so map it to amd64 too.
 switch ($env:PROCESSOR_ARCHITECTURE) {
   'AMD64' { $art = 'skills-windows-amd64.exe' }
-  default { throw "no prebuilt Windows binary for arch '$($env:PROCESSOR_ARCHITECTURE)' (amd64 only today). Build from source: github.com/ab0t-com/skill-cli" }
+  'ARM64' { $art = 'skills-windows-amd64.exe' }
+  default { throw "no prebuilt Windows binary for arch '$($env:PROCESSOR_ARCHITECTURE)'. Build from source: github.com/ab0t-com/skill-cli" }
 }
 
 $tmp = Join-Path $env:TEMP ('skills-install-' + [guid]::NewGuid().ToString('N'))
@@ -43,11 +45,13 @@ try {
   Invoke-WebRequest -Uri "$RepoRaw/release/$art" -OutFile "$tmp\$art" -UseBasicParsing
 
   # --- 3. mandatory sha256 verification --------------------------------------
+  # Strip any stray CR / BOM so the end-anchored match works regardless of line endings.
   $line = Get-Content "$tmp\checksums.txt" |
+          ForEach-Object { $_ -replace '[\r﻿]', '' } |
           Where-Object { $_ -match ('\s' + [regex]::Escape($art) + '$') } |
           Select-Object -First 1
   if (-not $line) { throw "no checksum line for $art in checksums.txt" }
-  $want = ($line -split '\s+')[0].ToLower()
+  $want = ($line.Trim() -split '\s+')[0].ToLower()
   $got  = (Get-FileHash -Algorithm SHA256 "$tmp\$art").Hash.ToLower()
   if ($got -ne $want) { throw "sha256 MISMATCH for $art (got $got, want $want) - refusing to install" }
   Write-Host 'sha256 verified.'

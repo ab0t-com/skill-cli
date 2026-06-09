@@ -3,7 +3,7 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
-## [0.1.14-public] — 2026-06-09
+## [0.1.16-public] — 2026-06-09
 
 ### Added
 - **macOS, Linux-arm64, and Windows binaries.** `release.sh` now cross-compiles a
@@ -20,6 +20,17 @@ published `release/VERSION`; `skills update` compares against it.
   unaffected).
 - Use the real home dir (not `$HOME`, which is unset on Windows) for the cwd hint;
   skip the Unix-only `tput` width probe on Windows.
+- Resolve the Python interpreter as `python3` → `python` → `py` (Windows ships
+  `python`/`py`) for the optional Jinja2 prompt-render fallback.
+- Normalize CRLF before scanning scripts and parsing `taxonomy.yml`, so Windows-
+  authored (`\r\n`) files are read correctly (incl. the secret/risk scanner).
+- `install.ps1`: handle ARM64 Windows (uses the amd64 build under emulation) and
+  tolerate CRLF/BOM in `checksums.txt`.
+
+### Removed
+- **The python3 + jinja2 runtime dependency.** `discover` and `prompt render` now use a
+  pure-Go template renderer (verified byte-for-byte against jinja2), so the binary is
+  truly self-contained — no Python needed, on any platform.
 
 ### Notes
 - On Windows, skill linking (`skills setup`) uses symlinks — enable Developer Mode
