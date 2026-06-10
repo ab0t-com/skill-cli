@@ -3,6 +3,24 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
+## [0.1.18-public] — 2026-06-10
+
+### Fixed
+- **`skills scan` no longer sweeps up other tools' skills.** On a populated machine,
+  `skills scan ~/` used to report hundreds of "new" skills — almost all of them vendored
+  by other harnesses (plugin marketplaces, installed-plugin caches, bundled copies, test
+  fixtures) — behind a per-skill `y/N` prompt that was unusable at that scale. Scan now:
+  - **skips managed/vendored trees by default** — installed-plugin and marketplace stores,
+    `_bundled`/`fixtures`/`sample-output` dirs, and hidden tool dirs (everything except
+    `.claude`, where repo skills live). Pass `--all-trees` to include them.
+  - **de-duplicates** skills found under more than one path (shows `(+N more copies)`).
+  - **approves a whole source tree at once** (`[y/N/a=all/q=quit]`) instead of prompting
+    once per skill — turning hundreds of prompts into a handful of decisions.
+- **`skills setup` installs shell completion on a fresh machine.** Completion used to be
+  skipped when no completion directory pre-existed; setup now creates the standard
+  bash-completion user dir and installs there (zsh gets a one-line `fpath` hint when zsh
+  is your shell).
+
 ## [0.1.17-public] — 2026-06-10
 
 ### Added
