@@ -7,9 +7,9 @@
 # installs it, verifying the published sha256 before touching anything.
 #
 # What it does:
-#   1. Detects host OS + arch. (Only linux-amd64 is published today; it fails
-#      clearly on anything else rather than installing the wrong thing.)
-#   2. Downloads release/checksums.txt, then release/skills, over HTTPS.
+#   1. Detects host OS + arch and picks the matching published binary (Linux &
+#      macOS, amd64+arm64; Windows uses install.ps1).
+#   2. Downloads release/checksums.txt, then the matching release/skills-<os>-<arch>, over HTTPS.
 #   3. Verifies the binary against the published sha256 — mandatory.
 #   4. Atomically installs to $PREFIX/bin/skills (default /usr/local/bin, or
 #      ~/.local/bin automatically when /usr/local needs root you don't have),

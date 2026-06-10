@@ -88,10 +88,12 @@ Bundled operating knowledge ships in [skills/](skills/):
 
 ## Install
 
-One-liner above, or manually: grab `release/skills` (linux-amd64), verify
-against `release/checksums.txt`, drop it on your PATH. `install.sh` is
-POSIX sh, HTTPS-only, sha256-mandatory, atomic, and keeps your previous
-binary as `.previous`.
+One-liner above (Linux/macOS use `install.sh`; Windows uses `install.ps1`). Or
+manually: grab the right `release/skills-<os>-<arch>` (`skills-linux-amd64`,
+`skills-linux-arm64`, `skills-darwin-amd64`, `skills-darwin-arm64`, or
+`skills-windows-amd64.exe`), verify it against its line in `release/checksums.txt`,
+and drop it on your PATH as `skills`. `install.sh` is POSIX sh, HTTPS-only,
+sha256-mandatory, atomic, and keeps your previous binary as `.previous`.
 
 ## Command surface
 
@@ -133,7 +135,13 @@ For full transparency, the only times `skills` makes a network request are:
 - `skills update` — a version check against this repo's `release/VERSION` on GitHub.
 - `skills audit` / `discover` / `classify` — call the Anthropic API using **your own**
   `ANTHROPIC_API_KEY` (your prompts go to Anthropic under your key, not to ab0t).
-- `skills add <url>` — downloads the skill you explicitly asked for.
+- `skills add <url>` / `skills setup` on an empty catalog — fetch the skill(s) you asked
+  for from GitHub.
+- `skills snapshot` / `skills drift` — fetch each service skill's OpenAPI doc from the
+  `source_url` declared in that skill's own frontmatter.
+
+In every case the destination is a public source you can see; none of it reports usage
+back to ab0t or any analytics service.
 
 Usage logging is **local only** (`~/.skills/.state/skill.log`; `SKILL_LOG=0` to disable)
 and never leaves your machine; secret scans run locally and secrets are never logged.

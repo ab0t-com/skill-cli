@@ -3,7 +3,7 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
-## [0.1.16-public] — 2026-06-09
+## [0.1.17-public] — 2026-06-10
 
 ### Added
 - **macOS, Linux-arm64, and Windows binaries.** `release.sh` now cross-compiles a
@@ -20,8 +20,6 @@ published `release/VERSION`; `skills update` compares against it.
   unaffected).
 - Use the real home dir (not `$HOME`, which is unset on Windows) for the cwd hint;
   skip the Unix-only `tput` width probe on Windows.
-- Resolve the Python interpreter as `python3` → `python` → `py` (Windows ships
-  `python`/`py`) for the optional Jinja2 prompt-render fallback.
 - Normalize CRLF before scanning scripts and parsing `taxonomy.yml`, so Windows-
   authored (`\r\n`) files are read correctly (incl. the secret/risk scanner).
 - `install.ps1`: handle ARM64 Windows (uses the amd64 build under emulation) and
@@ -29,8 +27,10 @@ published `release/VERSION`; `skills update` compares against it.
 
 ### Removed
 - **The python3 + jinja2 runtime dependency.** `discover` and `prompt render` now use a
-  pure-Go template renderer (verified byte-for-byte against jinja2), so the binary is
-  truly self-contained — no Python needed, on any platform.
+  pure-Go template renderer covering the subset the prompt library uses — `{% if %}`
+  with `and`/`or`/`not`, `{% for %}` with `loop.*`, `{% set %}`, and the
+  `default`/`length`/`join` filters — verified byte-for-byte against jinja2. The binary
+  is truly self-contained: no Python needed, on any platform.
 
 ### Notes
 - On Windows, skill linking (`skills setup`) uses symlinks — enable Developer Mode
@@ -66,7 +66,7 @@ published `release/VERSION`; `skills update` compares against it.
 - Deep audits cost more than the old SKILL.md-only pass (they send scripts; the
   rubric recommends `claude-sonnet-4-6`). Caching offsets repeats; use `--basic`
   for a cheap shallow pass. The model is still configurable via `SKILL_AUDIT_MODEL`
-  (default `claude-haiku-4-5`).
+  (default `claude-haiku-4-5-20251001`).
 - Clients with a hand-authored pre-v3 `prompts/skill-audit-rubric.md` get a one-line
   skew warning and 6-dimension scoring until they refresh it; everyone else uses the
   binary's built-in v3 rubric.

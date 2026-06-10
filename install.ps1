@@ -18,6 +18,12 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# `#Requires` above is ignored when this script is piped to `iex`, so enforce the
+# minimum version at runtime too (avoids a cryptic failure on PowerShell <5).
+if ($PSVersionTable.PSVersion.Major -lt 5) {
+  throw "skills install.ps1 needs PowerShell 5.1+ (found $($PSVersionTable.PSVersion))."
+}
+
 # Windows PowerShell 5.1 defaults to TLS 1.0; GitHub requires TLS 1.2+. Force it
 # or every download fails with an SSL error. (No-op/harmless on PowerShell 7+.)
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
