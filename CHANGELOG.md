@@ -3,6 +3,16 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
+## [0.1.20-public] — 2026-06-10
+
+### Changed
+- Version bump + clean rebuild of **all** platform binaries (`skills-linux-amd64`,
+  `skills-linux-arm64`, `skills-darwin-{amd64,arm64}`, `skills-windows-amd64.exe`) and
+  `checksums.txt`, so a reinstall unambiguously picks up the 0.1.18–0.1.19 fixes (the
+  root-aware behavior and the `skills scan` filtering). No behavior change vs 0.1.19; this
+  exists so `skills update` / reinstall shows a fresh version and can't serve a stale
+  cached artifact.
+
 ## [0.1.19-public] — 2026-06-10
 
 ### Fixed
