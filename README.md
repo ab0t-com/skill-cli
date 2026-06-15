@@ -115,10 +115,13 @@ mutating command supports `--dry-run`; destructive paths auto-snapshot first.
 
 ## Safety model
 
-Refuses root · auto-snapshots before any overwrite · `remove` only touches
-its own symlinks · imports validate names (no path traversal) and never
-overwrite · JSONL audit log of every invocation (`skills log`, `SKILL_LOG=0`
-to disable) · secrets never logged.
+Root-aware (not root-blocking): read-only verbs always run; when root is the
+only user — containers, CI, dev boxes — `skills` just works; invoked via `sudo`
+on a real account it warns that files would be root-owned but still runs
+(`--allow-root` / `SKILL_ALLOW_ROOT=1` to silence) · auto-snapshots before any
+overwrite · `remove` only touches its own symlinks · imports validate names (no
+path traversal) and never overwrite · JSONL audit log of every invocation
+(`skills log`, `SKILL_LOG=0` to disable) · secrets never logged.
 
 ## License
 

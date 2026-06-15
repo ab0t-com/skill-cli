@@ -46,11 +46,17 @@ FLAGS
   --json           machine-readable output (no colors, no progress noise; for AI agent runtime use)
                    supported on: list, similar, discover (manifest is already JSON)
   --debug          print a one-line debug summary to stderr after the command
+  --allow-root     silence the sudo-as-root warning (also SKILL_ALLOW_ROOT=1)
   --version        print version and exit
 
 NOTES
   Conflicts (real dir at install target) are auto-snapshotted to
     ~/.skills/.state/snapshots/<name>-installed-<date>/
   before being replaced. Nothing is ever deleted without a backup.
+
+  Running as root: read-only verbs always run. When root is the only user
+  (containers, CI, dev boxes) skills just works. Invoked via sudo on a real
+  account it warns (files would be root-owned) but still runs — silence with
+  --allow-root or SKILL_ALLOW_ROOT=1.
 
   Set PATH=$HOME/bin:$PATH so you can type skills bare. skills setup does this for you.

@@ -3,6 +3,20 @@
 All notable changes to the `skills` CLI are documented here. Versions track the
 published `release/VERSION`; `skills update` compares against it.
 
+## [0.1.19-public] — 2026-06-10
+
+### Fixed
+- **`skills` now runs as root when root is the only user.** It previously refused to run
+  as root for *every* command except `--version` — so on containers, CI, and root-only dev
+  boxes the tool was unusable (even `skills help`). The guard was aimed at the real hazard
+  (root-owned files under `~/.skills` that break for a later non-root user), but over-shot.
+  Now:
+  - **read-only verbs** (`help`, `status`, `list`, …) always run as root;
+  - **genuine root** (no other user) **just works** — no wall, no flag needed;
+  - **`sudo` on a real account** warns that files would be root-owned (likely a mistake) but
+    still proceeds — silence with `--allow-root` or `SKILL_ALLOW_ROOT=1`.
+  The behavior is documented in `skills help` and the Safety model section above.
+
 ## [0.1.18-public] — 2026-06-10
 
 ### Fixed
